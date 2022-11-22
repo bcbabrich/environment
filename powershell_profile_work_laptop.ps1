@@ -1,3 +1,92 @@
+Write-Host "Importing vi alias..." -NoNewline
+New-Alias -Name vi -value 'C:\Users\Z3882\Programs\vim\vim82\vim.exe'
+Write-Host "Done."
+
+Write-Host "Importing nvim alias..." -NoNewline
+New-Alias -Name nvim -value 'C:\Users\Z3882\Programs\nvim-win64\bin\nvim.exe'
+Write-Host "Done."
+
+Write-Host "Importing git alias..." -NoNewline
+$env:PATH += ';C:\Program Files\Git\bin;'
+Write-Host "Done."
+
+Write-Host "Importing mvn alias..." -NoNewline
+$env:PATH += 'C:\devtools\Apache\Maven_3.8.1\bin;'
+Write-Host "Done."
+
+Write-Host "Importing posh-git module..." -NoNewline
+Import-Module posh-git
+Write-Host "Done."
+
+$NvimExe = 'C:\Users\Z3882\Programs\nvim-win64\bin\nvim.exe'
+
+function ConvertTo-CamelCase {
+	param([string]$Dir)
+	$CamelCased = ''
+	($Dir -replace '_', '-') -split '-' | Select-Object -Skip 2 | ForEach-Object {
+		$CamelCased += $_.substring(0,1).toupper()+$_.substring(1).tolower()
+	}
+	return $CamelCased
+}
+$Root = 'C:\GitHubRepos'
+$FrontEnd = Join-Path $Root 'FE'
+$MidTier = Join-Path $Root 'MT'
+
+$Dirs = $FrontEnd, $MidTier
+$DirVars = @{}
+
+Get-Childitem $Dirs | ForEach-Object {
+	$Name = ConvertTo-CamelCase $_
+	$Value = $_.FullName
+	$DirVars.add("`$$Name", $Value)
+	Set-Variable -Name $Name -Value $Value
+}
+
+Write-Host "Available dir vars to jump to:"
+$DirVars | Format-Table
+
+function prompt {
+ $p = Split-Path -leaf -path (Get-Location)
+ "$p> "
+}
+
+function Reset-Npm {
+	& npm cache clean --force
+	& npm config set registry https://repo.artifactory.csx.com/artifactory/api/npm/npmjs-group/
+	& npm config set cafile "C:\Users\Z3882\OneDrive - CSX\Documents\zscalerrootca-1.0.0.crt"
+	& npm config set strict-ssl false
+}
+
+function Open-Jenkins {
+		param(
+			[string]$Repo,
+			[string]$Branch
+		)
+		[system.Diagnostics.Process]::Start("chrome",'https://jenkins.apps.ocpjaxp001.csx.com/job/Asset%20-%20Infrastructure%20Mgmt/job/'+ $Repo +'/job/'+($Branch -replace '\/', '%252F'))
+}
+
+function Push-AllGitChanges {
+		param([string]$CommitMessage)
+		
+		Write-Host "Adding all changes..." -ForegroundColor Blue
+		& git add . | Out-Null
+		Write-Host "Committing changes with message" -ForegroundColor Blue -NoNewline
+		Write-Host " '$CommitMessage' " -ForegroundColor Yellow -NoNewline
+		Write-Host "..." -ForegroundColor Blue
+		& git commit -m $CommitMessage | Out-Null
+		Set-Clipboard $CommitMessage
+		Write-Host "Your commit message has been copied to your clipboard" -ForegroundColor Blue
+		Write-Host "Pulling..." -ForegroundColor Blue
+		& git pull | Out-Null
+		Write-Host "Pushing..." -ForegroundColor Blue
+		& git push
+		Write-Host "Done" -ForegroundColor Green
+
+}
+
+Set-Alias -Name cd -Value pushd  -Option AllScope -Force
+Set-Alias -Name bd -Value popd  -Option AllScope
+
 Write-Host "Importing Set-GitSsh function..."
 
 # --------------------------------------------------------------------------
